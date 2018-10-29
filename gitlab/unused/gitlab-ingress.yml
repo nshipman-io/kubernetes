@@ -1,0 +1,21 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: gitlab
+  namespace: norman-test
+  annotations:
+    ingress.kubernetes.io/rewrite-target: /
+spec:
+  tls:
+    - secretName: norman-gitlab-certificate
+      hosts:
+        - "norman-gitlab.dev.ue1.quovo.com"
+        - "registry.norman-gitlab.dev.ue1.quovo.com"
+  rules:
+    - host: "norman-gitlab.dev.ue1.quovo.com"
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: gitlab-service
+              servicePort: 80

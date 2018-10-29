@@ -1,0 +1,23 @@
+apiVersion: extensions/v1beta1
+kind: Deployment 
+metadata:  
+  name: gitlab-runner 
+  namespace: norman-test
+spec: 
+  replicas: 1 
+  template: 
+    metadata:
+      labels: 
+        app: gitlab-runner 
+    spec:
+      serviceAccountName: gitlab-runner
+      containers: 
+      - image: gitlab/gitlab-runner:ubuntu-v11.3.1
+        name: gitlab-runner 
+        volumeMounts: 
+        - mountPath: /etc/gitlab-runner 
+          name: config
+      volumes: 
+      - name: config
+        secret:
+          secretName: config-toml

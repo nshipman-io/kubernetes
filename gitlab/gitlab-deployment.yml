@@ -1,0 +1,47 @@
+apiVersion: extensions/v1beta1 
+kind: Deployment 
+metadata: 
+  name: gitlab 
+  namespace: norman-test
+spec: 
+  replicas: 1
+  template: 
+    metadata: 
+      labels: 
+        app: gitlab 
+    spec: 
+      containers: 
+      - image: gitlab/gitlab-ce:11.3.6-ce.0
+        name: gitlab 
+        securityContext: 
+          privileged: true          
+        ports: 
+        - containerPort: 80  
+        - containerPort: 443
+        - containerPort: 22
+        - containerPort: 4567 
+        env: 
+        - name: GITLAB_OMNIBUS_CONFIG 
+          valueFrom: 
+            secretKeyRef: 
+              name: gitlab-rb 
+              key: gitlab.rb
+        volumeMounts: 
+        - mountPath: /data/gitlab 
+          name: gitlab-volume
+          readOnly: false
+        - mountPath: /etc/gitlab/ssl
+          name: norman-gitlab-certificate
+          readOnly: false
+      volumes: 
+      - name: gitlab-volume 
+        persistentVolumeClaim: 
+          claimName: gitlab-volume 
+      - name: norman-gitlab-certificate 
+        secret: 
+          defaultMode: 0755 
+          secretName: norman-gitlab-certificate
+          
+         
+
+        
