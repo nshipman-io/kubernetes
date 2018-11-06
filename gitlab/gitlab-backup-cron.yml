@@ -1,0 +1,21 @@
+--- 
+apiVersion: batch/v1beta1 
+kind: CronJob
+metadata: 
+  name: gitlab-backup-job 
+  namespace: norman-test
+spec:
+  schedule: "24 01 * * *"
+  jobTemplate: 
+    spec: 
+      template:
+        spec:
+          serviceAccountName: gitlab-backup
+          containers: 
+          - name: gitlab-backup-job 
+            image: 492865049799.dkr.ecr.us-east-1.amazonaws.com/quovo-kubectl:1.0.0
+            args: 
+            - /bin/sh 
+            - -c 
+            - kubectl exec -it $(kubectl get pod -n norman-test -l "app=gitlab" -o jsonpath='{.items[0].metadata.name}') -n norman-test -- gitlab-rake gitlab:backup:create SKIP=db,registry
+          restartPolicy: Never
