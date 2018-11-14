@@ -27,7 +27,7 @@ spec:
               name: gitlab-rb 
               key: gitlab.rb
         volumeMounts: 
-        - mountPath: /data/gitlab 
+        - mountPath: /etc/gitlab 
           name: gitlab-volume
           readOnly: false
         - mountPath: /etc/gitlab/ssl
