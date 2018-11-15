@@ -121,6 +121,14 @@ nginx['redirect_http_to_https'] = true
 prometheus_monitoring['enable'] = false
 registry['token_realm'] = "https://norman-gitlab.dev.ue1.quovo.com"
 registry['storagedriver_health_enabled'] = false
+gitlab_rails['smtp_enable'] = true
+gitlab_rails['smtp_address'] = "email-smtp.us-east-1.amazonaws.com"
+gitlab_rails['smtp_port'] = 587
+gitlab_rails['smtp_user_name'] = "REDACTED"
+gitlab_rails['smtp_password'] = "REDACTED"
+gitlab_rails['smtp_domain'] = "quovo.com"
+gitlab_rails['smtp_authentication'] = "login"
+gitlab_rails['smtp_enable_starttls_auto'] = true
 gitlab_rails['backup_upload_connection'] = {
   'provider' => 'AWS',
   'region' => 'us-east-1',
@@ -510,4 +518,5 @@ gitlab-rake gitlab:check SANITIZE=true
 5. Verify gitlab is running by going to the homepage and verifying that secrets  are present and 2FA users can login. 
 
 ## Additional Notes
-At this point you should have a running mostly functional gitlab container. I will need to add additional configurations to get mailing working.  
+
+We now have a fully functional gitlab server running in Kubernetes and AWS!
