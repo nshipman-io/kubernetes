@@ -2,7 +2,7 @@
 apiVersion: batch/v1beta1 
 kind: CronJob
 metadata: 
-  name: gitlab-backup-job 
+  name: gitlab-daily-data-backup 
   namespace: norman-test
 spec:
   schedule: "0 0 * * *"

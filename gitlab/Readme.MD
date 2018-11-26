@@ -121,14 +121,6 @@ nginx['redirect_http_to_https'] = true
 prometheus_monitoring['enable'] = false
 registry['token_realm'] = "https://norman-gitlab.dev.ue1.quovo.com"
 registry['storagedriver_health_enabled'] = false
-gitlab_rails['smtp_enable'] = true
-gitlab_rails['smtp_address'] = "email-smtp.us-east-1.amazonaws.com"
-gitlab_rails['smtp_port'] = 587
-gitlab_rails['smtp_user_name'] = "REDACTED"
-gitlab_rails['smtp_password'] = "REDACTED"
-gitlab_rails['smtp_domain'] = "quovo.com"
-gitlab_rails['smtp_authentication'] = "login"
-gitlab_rails['smtp_enable_starttls_auto'] = true
 gitlab_rails['backup_upload_connection'] = {
   'provider' => 'AWS',
   'region' => 'us-east-1',
@@ -491,7 +483,7 @@ Should the gitlab database or filesystem become unrecoverable, take the followin
 
 2. Copy the files in the new pod.  
 	- `kubectl cp gitlab-secrets.1542240010.json <gitlab_pod_name>:/etc/gitlab/gitlab-secrets.json -n <namespace_of_gitlab_pod>`
-	- `kubectp cp 1542240031_2018_11_15_11.3.6_gitlab_backup.tar <gitlab_pod_name>:/var/opt/gitlab/backup/ -n <namespace_of_gitlab_pod>`  
+	- `kubectp cp 1542240031_2018_11_15_11.3.6_gitlab_backup.tar <gitlab_pod_name>:/var/opt/gitlab/backups/ -n <namespace_of_gitlab_pod>`  
 
 3. Enter the pod and kickoff the restore script 
 	1.  `kubectl exec -it <gitlab_pod_name> -n <namespace_of_gitlab_pod> -- bash` 
@@ -505,7 +497,7 @@ sudo gitlab-ctl status
 ```	
 		
 	3. Restore the gitlab backup by kicking off the restore script. Throughout the process you will be prompted to press `y` for yes. As of now it is safe to overwrite the authorized_keys and database.  
-		`git-lab-rake gitlab:backup:restore BACKUP=1542240031_2018_11_15_11.3.6`
+		`gitlab-rake gitlab:backup:restore BACKUP=1542240031_2018_11_15_11.3.6`
  	4. For sanity check restart the gitlab service and check to verify it’s running. 
 ```
 gitlab-ctl restart
@@ -517,6 +509,18 @@ gitlab-rake gitlab:check SANITIZE=true
 
 5. Verify gitlab is running by going to the homepage and verifying that secrets  are present and 2FA users can login. 
 
-## Additional Notes
+## Disaster Recovery - Database Migration 
+Verify that the database migration has completed by running the following command within the pod. 
 
-We now have a fully functional gitlab server running in Kubernetes and AWS!
+`gitlab-rake db:migrate:status` 
+
+If you see any `down` statuses, run the following command to finish the db migration. 
+
+`gitlab-rake db:migrate` 
+
+Verify the status is up for all the fields. 
+
+This should resolve any 500 errors we may experience with commits and merge requests within projects.
+
+## Additional Notes
+Will update with gitlab artifact (logs) backup process.

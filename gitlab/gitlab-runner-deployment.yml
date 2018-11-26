@@ -12,7 +12,7 @@ spec:
     spec:
       serviceAccountName: gitlab-runner
       containers: 
-      - image: gitlab/gitlab-runner:ubuntu-v11.3.1
+      - image: gitlab/gitlab-runner:ubuntu-v11.4.2
         name: gitlab-runner 
         volumeMounts: 
         - mountPath: /etc/gitlab-runner 

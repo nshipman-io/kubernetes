@@ -11,10 +11,10 @@ spec:
         app: gitlab 
     spec: 
       containers: 
-      - image: gitlab/gitlab-ce:11.3.6-ce.0
+      - image: gitlab/gitlab-ce:11.4.6-ce.0
         name: gitlab 
         securityContext: 
-          privileged: true          
+          privileged: true 
         ports: 
         - containerPort: 80  
         - containerPort: 443
@@ -26,17 +26,23 @@ spec:
             secretKeyRef: 
               name: gitlab-rb 
               key: gitlab.rb
-        volumeMounts: 
+        volumeMounts:  
         - mountPath: /etc/gitlab 
-          name: gitlab-volume
+          name: gitlab-conf-volume 
+          readOnly: false
+        - mountPath: /var/opt/gitlab 
+          name: gitlab-data-volume
           readOnly: false
         - mountPath: /etc/gitlab/ssl
           name: norman-gitlab-certificate
           readOnly: false
       volumes: 
-      - name: gitlab-volume 
+      - name: gitlab-data-volume 
         persistentVolumeClaim: 
-          claimName: gitlab-volume 
+          claimName: gitlab-data-volume
+      - name: gitlab-conf-volume 
+        persistentVolumeClaim:
+          claimName: gitlab-conf-volume 
       - name: norman-gitlab-certificate 
         secret: 
           defaultMode: 0755 
