@@ -28,7 +28,7 @@ spec:
               key: gitlab.rb
         volumeMounts:  
         - mountPath: /etc/gitlab 
-          name: gitlab-conf-volume 
+          name: gitlab-data-volume 
           readOnly: false
         - mountPath: /var/opt/gitlab 
           name: gitlab-data-volume
@@ -40,9 +40,6 @@ spec:
       - name: gitlab-data-volume 
         persistentVolumeClaim: 
           claimName: gitlab-data-volume
-      - name: gitlab-conf-volume 
-        persistentVolumeClaim:
-          claimName: gitlab-conf-volume 
       - name: norman-gitlab-certificate 
         secret: 
           defaultMode: 0755 
