@@ -415,3 +415,67 @@ kube-proxy-lgqx9                                       1/1     Running   3      
 kube-proxy-s9h9r                                       1/1     Running   3          18d
 kube-scheduler-ionshipman1c.mylabserver.com            1/1     Running   3          18d
 ```
+
+# Hardware and Underlying Infrastructure 
+
+- Nodes, including the master, can be physical or virtual machines running kubernetes components and a container manager such as docker or rocket. 
+- A pod networking application such as Flanner is needed to allow the pods to communicate, and makes use of an overla network (by default it's vxlans) to provide that service.  
+
+** For the exam in K8s lab is made of of 3 virtual machines. Kubeadm to bootstrap the master and ran a join command on each node to provision them. 
+
+# Securing Cluster Communications  
+
+Cluster communications cover communications to the API server, control-plane communications inside the cluster, and can even include pod-to-pod communications. 
+Everything in Kubernetes goes through the API server. 
+
+Default encription in K8s is TLS. 
+Most installation methods handle the certificate creation. (Kubeadm) 
+No matter how you've installed kubernetes, some components and installation methods may enable local ports over HTTP. Double check the settings of these components and address them.  
+
+Anything that conencts to the API, including nodes, proxies, the scheduler, volume plugins and users should pass an authentication check. 
+Once authenticated, every API call should pass an authorization check.  
+
+## Role-Based Access Control (RBAC) 
+
+Certain roles perform specific actions in the cluster. 
+Simple roles might be fine for small clusters. 
+If a user doesn't have rights to perform an action but they have access to perform a composite action that includes it, the user WILL be able to indirectly create objects. 
+ex. If a user can't create a pod, but can create a deployments, the pod will be launched.  
+
+## Securing the Kubelet 
+
+Secure the kubelet on each node. The Kubelets expose HTTPS endpoints which give access to both data and actions on the nodes. By default, these are open. 
+To secure those endpoints, you can enable Kubelet Authenticaton and Authorization by starting it with an `--anonymous-auth=false` flag and assigning it an appropriate x509 client certificate in its configurations.  
+
+## Securing the Network 
+
+Network policies restric access to the network for a particular namespace. This allow developers to restrict which pods in other namespaces can access pods and ports within the current namespace. THe pod networking CNI must respect these policies. 
+
+Users can also be assigned quotors or limit ranges. 
+
+Use plug-ins for more advanced functionality. 
+
+## Vulnerabilities 
+
+Kubernetes makes extensive use of etc for storing configuration and secrets. It acts as the key/value store for the whole cluster.  
+
+Gaining write access to etcd is very much like gaining root on the whole cluster, and even read access can be used by attackers to cause damage. 
+
+Strong credentials on your etc server or cluster is a must. 
+
+Isolate the etc resources behind a firewall that only allows requests from the API servers. 
+
+Audit logging is also critical, it records actions taken by the API for later analysis in the event of an attack. Enable audit logging and archie the audit file on a secure server.  
+
+Rotate your infrastructure credentials frequently. Smaller lifetime windows for secrets and credentials create bigger problems for attackers attempting to use it. Set these up with short lifetime cycle and automate the rotation. 
+
+## Third Party Integrations 
+
+Always review third party integrations before enabling them. Integrations to K8s can change how secure your cluster is. 
+Add-ons might be nothing more than a pod in the cluster - Don't allow them into the `kube-system` namespace. 
+
+# Making Kubernetes Highly Available 
+
+
+
+
