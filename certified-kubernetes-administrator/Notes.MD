@@ -1,6 +1,6 @@
 # Linux Academy - Certified Kubernetes Administrators 
 
-
+# Core Concepts (19% of the Exam)
 ## Setting Up The Cluster 
 
 Initializing the master node with `kubeadm`. Linux Academy nodes come prepacked with `kubeadm` so follow 
@@ -281,6 +281,7 @@ Points to remember:
 - Services expose deployments. 
 - Third parties handle load balancing or port forwarding to those services, though Ingress objects (along with an appropriate ingress controller) are needed to do that work. 
 
+#Installation, Configuration and Validation (12% of Exam)
 # Designing a Kubernetes Cluster 
 
 *Minikube* - Recommended method for creating a single node kubernetes deployment on local workstation. 
@@ -476,6 +477,102 @@ Add-ons might be nothing more than a pod in the cluster - Don't allow them into 
 
 # Making Kubernetes Highly Available 
 
+## The Process 
 
+- Create the reliable nodes that will form our cluster. 
+- Setup a redundant and reliable storage service with a multinode deployment of etcd. 
+- start replicated and load balanced Kubernetes API servers. 
+- Set up a master-elected kubernetes scheduler and controller manager daemons. 
 
+Everything that needs the API server on any other service on the master foes through the load balancer, including the worker nodes.  
 
+## Step One - Make the master node reliable. 
+- Ensure that the services automatically restart if they fail 
+- Kubelet already does this, if kubelet goes down, we need something to restart it. Monit on Debian or systemctl systemd systems can handle that.  
+
+## Step Two - Storage Layer 
+- Clustered etc already replicates the storage to all master instances in your cluster. 
+- To lose data, all three nodes would need to have their disks fail at the same time. 
+- Probability of this occurrence is low, running a replicated etc cluster is reliable enough. 
+- Additional reliability by icnreasing the size of the cluster from 3 to 5 nodes.  
+
+## Step Three - Replicated API Services 
+-  Create the initial log file so that Docker will mount a file instead of a directory:  
+  - `touch /var/log/kube-apiserver.log`
+- Create a `/src/kubernetes/` directory on each node which should include: 
+  - basic_auth.csv - basic auth user and password 
+  - ca.crt - Certificate Authority cert 
+  - known_tokens.csv - tokens that entities (e.g the kubelet) can use to talk t the apiserver 
+  - kubecfg.crt - Client certificate, public key 
+  - kubecfg.key - Client certificate, private key 
+  - server.cert - Server certificate, public key 
+  - server.key - Server certificate, private key  
+
+- Create manually or copy from master node on a working cluster
+- Copy the `kube-apiserver.yml` into `/etc/kubernetes/manifests/` on each of our master nodes
+- Kubelet monitors this directory, and will automatically create an instance of the kube-apiserver container using the pod definition specified in the file. 
+
+- If network load balance ris setup, access the cluster using the VIP to verify traffic balancing between the apiserver instances. 
+- External users (kubectl command line interface, continuous build pipelines, etc) remember to configure them to talk to the external load balancers' IP address.
+
+## Step Four - Controller / Scheduler Daemons 
+
+- Allow our state to change
+- controller managers and scheduler processes must not modify the cluster's state simultaneously, so we must use a lease-lock. 
+- Each scheduler and controller manager can be launched with a `--leader-elect` flag  
+- Scheduler and controller-manager can be configured to talk to the API server on the same node (127.0.0.1) or the load balanced IP address. 
+- Scheduler and controller-manager will complete the leader election process mentioned before when using the `--leader-elect` flag. 
+- In case of a failure accessing the API server, the elected leader will not be able to renew the lease causing a new leader to be elected. 
+- Especially relevant when configuring the scheduler and controller-manaer to access the API server via 127.0.0.1 and the API server on the same node is unavailable.
+
+## Installing Configuration Files 
+
+- Create empty log files on each node, so Docker will mount the files and not make new directories: 
+  - `touch /var/log/kube-scheduler.log`
+  - `touch /var/log/kube-controller-manager.log` 
+
+- Set up the descriptions of the scheduler and controller manager pods on each node by copying `kube-scheduler.yaml` and `kube-manager.yaml` into the `/etc/kubernetes/manifests/` directory.
+
+# Validating Nodes and the Cluster 
+
+## End to End Validations 
+- Provides a mechanism to test end-to-end behavior of the system. It's the last signal to ensure end user operations match speficfications and is primarily a developer tool. 
+- Difficul to run against "any" deployment -- many specific tests for cloud providers. 
+  - Ubuntu has its own Juju-deployed tests 
+  - GCE Has its own 
+
+- Kubetest Suite 
+  - ideal for GCE or AWS users
+  - Build 
+  - Stage 
+  - Extract 
+  - Bring up the cluster 
+  - Test
+  - Dump logs 
+  - Tear down
+
+## Validating Nodes and the Cluster 
+
+Validating the nodes and cluster 
+
+`kubectl get nodes` 
+
+```
+cloud_user@ionshipman1c:~$ kubectl get nodes
+NAME                           STATUS   ROLES    AGE   VERSION
+ionshipman1c.mylabserver.com   Ready    master   24d   v1.12.2
+ionshipman2c.mylabserver.com   Ready    <none>   24d   v1.12.2
+ionshipman3c.mylabserver.com   Ready    <none>   24d   v1.12.2
+```
+
+`kubectl describe nodes ionshipman1c.mylabserver.com` 
+
+Outputs the nodes status - CPU / Disk Usage, taints etc. 
+
+Additonally we can SSH into the node to verify the status 
+
+`ps aux | grep kube` to verify kue services are up and running. 
+
+# Application Lifecycle Management (8%) 
+
+## Deployments, Rolling Updates and Rollbacks
