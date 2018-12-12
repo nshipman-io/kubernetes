@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  school: LinuxAcademy
+kind: ConfigMap
+metadata:
+  creationTimestamp: 2018-12-12T14:20:06Z
+  name: my-map
+  namespace: default
+  resourceVersion: "225686"
+  selfLink: /api/v1/namespaces/default/configmaps/my-map
+  uid: 05dd3a17-fe19-11e8-925b-0ae156f25116

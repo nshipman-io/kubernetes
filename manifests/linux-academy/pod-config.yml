@@ -7,11 +7,11 @@ spec:
   containers: 
     - name: test-container 
       image: busybox 
-      command: [ "/bin/sh", "-c", "enc" ] 
+      command: [ "/bin/sh", "-c", "env" ] 
       env: 
         - name: WHAT_SCHOOL 
           valueFrom: 
             configMapKeyRef: 
               name: my-map 
               key: school 
-  restarPolicy: Never 
+  restartPolicy: Never 
