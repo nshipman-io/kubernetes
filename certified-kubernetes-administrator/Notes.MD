@@ -575,4 +575,210 @@ Additonally we can SSH into the node to verify the status
 
 # Application Lifecycle Management (8%) 
 
-## Deployments, Rolling Updates and Rollbacks
+## Deployments, Rolling Updates and Rollbacks 
+
+Creating a deployment and checking the status of the deployment. 
+
+```
+cloud_user@ionshipman1c:~/kubernetes$ kubectl create -f nginx-deployment.yml
+deployment.apps/nginx-deployment created
+cloud_user@ionshipman1c:~/kubernetes$ kubectl get po
+NAME                                READY   STATUS              RESTARTS   AGE
+nginx                               1/1     Running             3          6d3h
+nginx-deployment-5c689d88bb-7fhdt   0/1     ContainerCreating   0          5s
+nginx-deployment-5c689d88bb-cjkrw   0/1     ContainerCreating   0          5s
+cloud_user@ionshipman1c:~/kubernetes$ kubectl get deployments
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx-deployment   2         2         2            2           22s
+cloud_user@ionshipman1c:~/kubernetes$ kubectl describe deployment nginx-deployment
+Name:                   nginx-deployment
+Namespace:              default
+CreationTimestamp:      Tue, 11 Dec 2018 17:50:10 +0000
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=nginx
+Replicas:               2 desired | 2 updated | 2 total | 2 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=nginx
+  Containers:
+   nginx:
+    Image:        nginx:1.7.9
+    Port:         80/TCP
+    Host Port:    0/TCP
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   nginx-deployment-5c689d88bb (2/2 replicas created)
+Events:
+  Type    Reason             Age   From                   Message
+  ----    ------             ----  ----                   -------
+  Normal  ScalingReplicaSet  45s   deployment-controller  Scaled up replica set nginx-deployment-5c689d88bb to 2
+``` 
+
+Returning the yaml 
+`kubectl get deployment nginx-deployment -o yaml` 
+
+## Rolling updating images 
+1. Via command line 
+```
+cloud_user@ionshipman1c:~/kubernetes$ kubectl set image deployment/nginx-deployment nginx=nginx:1.8
+deployment.extensions/nginx-deployment image updated
+cloud_user@ionshipman1c:~/kubernetes$ kubectl rollout status deployment/nginx-deployment
+Waiting for deployment "nginx-deployment" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "nginx-deployment" rollout to finish: 1 old replicas are pending termination...
+deployment "nginx-deployment" successfully rolled out 
+kubectl describe deployment nginx-deployment # Output and verify new image
+```
+
+2. Via yaml 
+Update then `kubectl apply -f nginx-deployment.yml` 
+
+## Checking the rollout history for debugging
+
+```
+cloud_user@ionshipman1c:~/kubernetes$ kubectl rollout history deployment/nginx-deployment --revision=3
+deployment.extensions/nginx-deployment with revision #3
+Pod Template:
+  Labels:	app=nginx
+	pod-template-hash=6987cdb55b
+  Containers:
+   nginx:
+    Image:	nginx:1.9.1
+    Port:	80/TCP
+    Host Port:	0/TCP
+    Environment:	<none>
+    Mounts:	<none>
+  Volumes:	<none>
+```
+
+## Rolling back a Deployment
+
+```
+cloud_user@ionshipman1c:~/kubernetes$ kubectl rollout undo deployment/nginx-deployment --to-revision=2
+deployment.extensions/nginx-deployment
+cloud_user@ionshipman1c:~/kubernetes$ kubectl apply -f nginx-deployment.yml
+deployment.apps/nginx-deployment configured
+cloud_user@ionshipman1c:~/kubernetes$ kubectl rollout status deployment nginx-deployment
+Waiting for deployment "nginx-deployment" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "nginx-deployment" rollout to finish: 1 old replicas are pending termination...
+deployment "nginx-deployment" successfully rolled out
+cloud_user@ionshipman1c:~/kubernetes$
+```
+
+## Excercise: Deployments 
+
+## Excercise
+
+1. Create the deployment.
+
+2. Which nodes are the pods running on. How can you tell?
+
+3. Update the deployment to use the 1.8 version of the nginx container and roll it out.
+
+4. Update the deployment to use the 1.9.1 version of the nginx container and roll it out.
+
+5. Roll back the deployment to the 1.8 version of the container.
+
+6. Remove the deployment
+
+```
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2 
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+```
+
+## Solution 
+```
+1. Create the yaml file and name it something. I chose nginx-deployment.yaml. Create the deployment object by calling kubectl create -f nginx-deployment.yaml.
+
+2. You can find this answer by doing a kubectl describe deployment nginx-deployment.
+
+3. There are many ways to get this:
+
+kubectl get pods -l app=nginx -o wide gives you the results in one step and uses a label selector.
+Or, you could:
+kubectl describe deployment nginx-deployment to get the pod information about the deployment and, using that,
+kubectl get pods name-of-pods -o wide
+4. There are many ways. Here are two:
+
+kubectl set image deployment nginx-deployment nginx=nginx:1.8. This will work just fine but is not the preferred method because now the yaml is inconsistent with what you've got running in the cluster. Anyone coming across your yaml will assume it's what is up and running and it isn't.
+Update the line in the yaml to the 1.8 version of the image, and apply the changes with kubectl apply -f nginx-deployment.yaml
+5. Same as above. Don't forget you can watch the status of the rollout with the command kubectl rollout status deployment nginx-deployment.
+
+6. kubectl rollout undo deployment nginx-deployment will undo the previous rollout, or if you want to go to a specific point in history, you can view the history with kubectl rollout history deployment nginx-deployment and roll back to a specific state with kubectl rollout history deployment nginx-deployment --revision=x.
+```
+### Finding the Nodes pods are running on 
+
+```
+cloud_user@ionshipman1c:~/kubernetes$ kubectl get pods -l app=nginx -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP            NODE                           NOMINATED NODE
+nginx-deployment-6987cdb55b-ch94h   1/1     Running   0          18m   10.244.2.13   ionshipman3c.mylabserver.com   <none>
+nginx-deployment-6987cdb55b-z7d42   1/1     Running   0          18m   10.244.1.9    ionshipman2c.mylabserver.com   <none>
+```
+
+## How Kubernetes Configures Applications 
+
+Use config maps
+
+1. from command line 
+```
+cloud_user@ionshipman1c:~/kubernetes$ kubectl create configmap my-map --from-literal=school=LinuxAcademy
+configmap/my-map created
+cloud_user@ionshipman1c:~/kubernetes$ kubectl describe configmaps my-map
+Name:         my-map
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+school:
+----
+LinuxAcademy
+Events:  <none>
+```
+
+Returning the configmap 
+
+```
+cloud_user@ionshipman1c:~/kubernetes$ kubectl get configmap my-map
+NAME     DATA   AGE
+my-map   1      95s
+cloud_user@ionshipman1c:~/kubernetes$ kubectl get configmap my-map -o yaml
+apiVersion: v1
+data:
+  school: LinuxAcademy
+kind: ConfigMap
+metadata:
+  creationTimestamp: 2018-12-12T14:20:06Z
+  name: my-map
+  namespace: default
+  resourceVersion: "225686"
+  selfLink: /api/v1/namespaces/default/configmaps/my-map
+  uid: 05dd3a17-fe19-11e8-925b-0ae156f25116
+``` 
