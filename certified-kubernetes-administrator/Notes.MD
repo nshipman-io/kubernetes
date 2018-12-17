@@ -781,4 +781,6 @@ metadata:
   resourceVersion: "225686"
   selfLink: /api/v1/namespaces/default/configmaps/my-map
   uid: 05dd3a17-fe19-11e8-925b-0ae156f25116
-``` 
+```  
+
+Configmaps are ideal for decoupling the environmental variables from the deployment yamls. 
