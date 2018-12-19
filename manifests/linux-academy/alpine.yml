@@ -2,7 +2,10 @@ apiVersion: v1
 kind: Pod 
 metadata: 
   name: alpine 
-  namespace: default 
+  namespace: default
+  labels: 
+    running: afterLabels 
+    tier: linuxAcademyCloud 
 spec: 
   containers: 
   - name: alpine 
