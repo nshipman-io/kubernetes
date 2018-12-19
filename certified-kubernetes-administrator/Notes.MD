@@ -784,3 +784,73 @@ metadata:
 ```  
 
 Configmaps are ideal for decoupling the environmental variables from the deployment yamls. 
+
+## Scaling Applications 
+
+1. `kubectl scale deployment/nginx-deployment --replicas=3`
+2. Editing the yaml
+
+## Self-Healing Applications 
+Constantly checks the status of the cluster and keeps the cluster in the same state.
+
+Replica Controllers (Depracated for deployments) - https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/
+
+# Scheduling (5% of the Exan) 
+
+## Labels and Selectors 
+
+Labels are key value pairs and must be unique 
+
+`kubectl get pods -l app=nginx`  
+
+`kubectl label pod mysql-xxxxxxxx-xxxx test=sure` 
+`kubectl describe pod -l test=sure` 
+
+TLDR; Label shit to save time. 
+
+# Excercise: Label all the things 
+
+1. Label each node 
+```
+cloud_user@ionshipman1c:~$ kubectl get nodes
+NAME                           STATUS   ROLES    AGE   VERSION
+ionshipman1c.mylabserver.com   Ready    master   32d   v1.12.2
+ionshipman2c.mylabserver.com   Ready    <none>   32d   v1.12.2
+ionshipman3c.mylabserver.com   Ready    <none>   32d   v1.12.2
+cloud_user@ionshipman1c:~$ kubectl label nodes ionshipman1c.mylabserver.com color=black
+node/ionshipman1c.mylabserver.com labeled
+cloud_user@ionshipman1c:~$ kubectl label nodes ionshipman2c.mylabserver.com color=red
+node/ionshipman2c.mylabserver.com labeled
+cloud_user@ionshipman1c:~$ kubectl label nodes ionshipman3c.mylabserver.com color=green
+node/ionshipman3c.mylabserver.com labeled
+cloud_user@ionshipman1c:~$
+
+``` 
+
+2. Label all pods running in a namespace 
+
+```
+kubectl label pods -n default running=beforeLabels --all
+kubectl get pods -l running=beforeLabels -n default
+kubectl label pods --all -n default tier=linuxAcademyCloud
+kubectl get pods -l running=afterLabels,tier=linuxAcademyCloud
+```
+
+3. Update alpine deployment 
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: alpine
+  namespace: default
+  labels:
+    running: afterLabels
+spec:
+  containers:
+  - name: alpine
+    image: alpine
+    command:
+      - sleep
+      - "60"
+  restartPolicy: Always
+```
