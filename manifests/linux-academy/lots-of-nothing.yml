@@ -1,0 +1,20 @@
+--- 
+apiVersion: apps/v1 
+kind: Deployment 
+metadata: 
+  name: lots-of-nothing 
+  labels: 
+    app: lots-of-nothing 
+spec: 
+  replicas: 6 
+  selector: 
+    matchLabels: 
+      app: lots-of-nothing 
+  template:  
+    metadata: 
+      labels: 
+        app: lots-of-nothing
+    spec: 
+      containers: 
+      - name: lots-of-nothing 
+        image: k8s.gcr.io/pause:2.0 
