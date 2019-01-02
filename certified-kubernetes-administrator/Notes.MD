@@ -854,3 +854,293 @@ spec:
       - "60"
   restartPolicy: Always
 ```
+
+## DaemonSets 
+
+Scheduling case for Kubernetes which places, one deployment on each node. 
+```
+cloud_user@ionshipman1c:~/kubernetes/manifests/linux-academy$ kubectl get daemonsets -n kube-system
+NAME                      DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                     AGE
+kube-flannel-ds-amd64     3         3         3       3            3           beta.kubernetes.io/arch=amd64     32d
+kube-flannel-ds-arm       0         0         0       0            0           beta.kubernetes.io/arch=arm       32d
+kube-flannel-ds-arm64     0         0         0       0            0           beta.kubernetes.io/arch=arm64     32d
+kube-flannel-ds-ppc64le   0         0         0       0            0           beta.kubernetes.io/arch=ppc64le   32d
+kube-flannel-ds-s390x     0         0         0       0            0           beta.kubernetes.io/arch=s390x     32d
+kube-proxy                3         3         3       3            3           <none>                            32d
+
+cloud_user@ionshipman1c:~/kubernetes/manifests/linux-academy$ kubectl describe daemonset kube-flannel-ds-amd64 -n kube-system
+Name:           kube-flannel-ds-amd64
+Selector:       app=flannel,tier=node
+Node-Selector:  beta.kubernetes.io/arch=amd64
+Labels:         app=flannel
+                tier=node
+Annotations:    kubectl.kubernetes.io/last-applied-configuration:
+                  {"apiVersion":"extensions/v1beta1","kind":"DaemonSet","metadata":{"annotations":{},"labels":{"app":"flannel","tier":"node"},"name":"kube-f...
+Desired Number of Nodes Scheduled: 3
+Current Number of Nodes Scheduled: 3
+Number of Nodes Scheduled with Up-to-date Pods: 3
+Number of Nodes Scheduled with Available Pods: 3
+Number of Nodes Misscheduled: 0
+Pods Status:  3 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:           app=flannel
+                    tier=node
+  Service Account:  flannel
+  Init Containers:
+   install-cni:
+    Image:      quay.io/coreos/flannel:v0.10.0-amd64
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      cp
+    Args:
+      -f
+      /etc/kube-flannel/cni-conf.json
+      /etc/cni/net.d/10-flannel.conflist
+    Environment:  <none>
+    Mounts:
+      /etc/cni/net.d from cni (rw)
+      /etc/kube-flannel/ from flannel-cfg (rw)
+  Containers:
+   kube-flannel:
+    Image:      quay.io/coreos/flannel:v0.10.0-amd64
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      /opt/bin/flanneld
+    Args:
+      --ip-masq
+      --kube-subnet-mgr
+    Limits:
+      cpu:     100m
+      memory:  50Mi
+    Requests:
+      cpu:     100m
+      memory:  50Mi
+    Environment:
+      POD_NAME:        (v1:metadata.name)
+      POD_NAMESPACE:   (v1:metadata.namespace)
+    Mounts:
+      /etc/kube-flannel/ from flannel-cfg (rw)
+      /run from run (rw)
+  Volumes:
+   run:
+    Type:          HostPath (bare host directory volume)
+    Path:          /run
+    HostPathType:
+   cni:
+    Type:          HostPath (bare host directory volume)
+    Path:          /etc/cni/net.d
+    HostPathType:
+   flannel-cfg:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      kube-flannel-cfg
+    Optional:  false
+Events:        <none>
+```
+
+* Annonations are for notes, unlike labels which are used for selecting pods. 
+
+```
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-daemonset
+  namespace: kube-system
+  labels:
+    app: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+```
+
+## Resouce Limits and Pods 
+
+For the exam, how it handles resource limits, taints etc. 
+
+Taints - repel workloads from the node. ex. Have to add a toleration to allow a pod to run on it.  
+
+
+Adding and removing taints.  
+
+Removing: `kubectl taint nodes ionshipman1c.mylabserver.com node-role.kubernetes.io/master-`
+Adding: `kubectl taint node ionshipman1c.mylabserver.com node-role.kubernetes.io=master:NoSchedule` 
+
+Specify memory requests and limits. If the pod exceeds the amount of memory it will be allowed if the node has memory, but eligible for termination. 
+
+** If a Taint and Toleration match, the taint will be ignored and the pod can be scheduled on the node. 
+
+podAffinity can ensure pods end up on the same node together. 
+Anti podAffinity can ensure pods DO NOT end up on the same node together.
+
+# Manually Scheduling Pods 
+
+Using labels and node selector 
+
+`kubectl label node ionshipman3c.mylabserver.com network=gigabit` 
+
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: webhead
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: webhead
+  template:
+    metadata:
+      labels:
+        run: webhead
+    spec:
+      containers:
+      - image: nginx
+        name: webhead
+        ports:
+        - containerPort: 80
+          protocol: TCP
+      nodeSelector:
+        network: gigabit
+```
+`kubectl describe pods -l run=webhead` 
+
+# Logging and Monitoring (5% of the Exam) 
+
+## Monitoring 
+
+Monitor nodes, containers, pods, service and provide end-users resource usage information. 
+
+Heapster -- Cluster-wide aggregator of monitoring and event data  
+
+Kubelet/cAdvisor on the node -> Heapster runs on single node with kubelet/Cadvisor (communicates with the master) -> Storage backend 
+
+cAdvisor - open source container resouce usage and performance analysis agent. 
+  - Auto-discovers all containers on a node and collects CPU, memory, file systems and network usage statistics. 
+  - Provides the overall machine usage by analyzing the 'root' container on the machine. 
+  - Exposes a simple UI for local containers on port 4194. 
+
+- Kubelet acts as a bridge between the kubernetes master and the nodes. 
+- Manages the pods and containers running on a node. 
+- Translates each pod into the containers making it up. 
+- Obtains usage statistics from cAdvisor. 
+- Exposes the aggregated pod resource usage statistics via a REST API.  
+- Grafana with InfluxDB
+- Heapster is setup to use this storage backend by default. 
+- InfluxDB and Grafana run in pods. 
+- Pod exposes itself as a Kubernetes service which is how Heapster discovers it. 
+- Grafana container servers Grafana's UI whcih provides a dashboard. 
+
+# Managing Logs
+
+## Managing Logs
+
+Logs from pods: `kubectl logs <container_name>` 
+Kubernetes system logs: `/var/log/containers`  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
