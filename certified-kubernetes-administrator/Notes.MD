@@ -258,7 +258,7 @@ Services --> Deployments
 - The kubernetes service (using kube-proxy on the node) redirects traffic.  
 
 Imperative 
-- `kubectl run nginx --image=nginx` or `kubectl create secret genetic hello-kube-conf --from-file=hello-kube.conf`
+- `kubectl run nginx --image=nginx` or `kubectl create secret generic hello-kube-conf --from-file=hello-kube.conf`
 
 Declarative 
 ```
