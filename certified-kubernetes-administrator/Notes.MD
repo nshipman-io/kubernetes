@@ -1050,10 +1050,87 @@ cAdvisor - open source container resouce usage and performance analysis agent.
 ## Managing Logs
 
 Logs from pods: `kubectl logs <container_name>` 
-Kubernetes system logs: `/var/log/containers`  
+Kubernetes system logs: `/var/log/containers`   
 
+## Excercise: Viewing the Logs 
 
+`counter.yml` 
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: counter
+  labels:
+    demo: logger
+spec:
+  containers:
+  - name: count
+    image: busybox
+    args: [/bin/sh, -c, 'i=0; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 3; done']
+```
 
+1. View the logs
+`kubectl logs counter` 
+2. Allow the container to run for a few minutes while viewing the log interactively. 
+`kubectl logs -f counter` 
+3. Have the command only print the last 10 lines of the log.
+`kubectl logs --tail=10 counter` 
+4. Look at the logs for the scheduler. Are there any problems? 
+`vim /var/log/containers/kube-scheduler-XXXX` 
+```
+{"log":"E1219 14:50:49.648787       1 reflector.go:134] k8s.io/client-go/informers/factory.go:131: Failed to list *v1.PersistentVolume: Get https://172.31.44.139:6443/api/v1/persistentvolumes?limit=500\u0026resourceVersion=0: net/http: TLS handshake timeout\n","stream":"stderr","time":"2018-12-19T14:50:49.649036579Z"}
+```
+5. Kubernetes uses etcd for it's key-value store. Examine the logs: 
+`vim /var/log/containers/etcd-ionshipman1c.mylabserver.com_kube-system_etcd-XXXX` 
+```
+{"log":"2019-01-02 14:17:22.005281 I | embed: ClientTLS: cert = /etc/kubernetes/pki/etcd/server.crt, key = /etc/kubernetes/pki/etcd/server.key, ca = , trusted-ca = /etc/kubernetes/pki/etcd/ca.crt, client-cert-auth = true\n","stream":"stderr","time":"2019-01-02T14:17:22.005598809Z"}
+{"log":"2019-01-02 14:17:22.008360 I | etcdserver: a874c87fd42044f as single-node; fast-forwarding 9 ticks (election ticks 10)\n","stream":"stderr","time":"2019-01-02T14:17:22.008506513Z"}
+{"log":"2019-01-02 14:17:22.590041 I | raft: a874c87fd42044f is starting a new election at term 11\n","stream":"stderr","time":"2019-01-02T14:17:22.590346827Z"}
+{"log":"2019-01-02 14:17:22.590075 I | raft: a874c87fd42044f became candidate at term 12\n","stream":"stderr","time":"2019-01-02T14:17:22.590367349Z"}
+{"log":"2019-01-02 14:17:22.590093 I | raft: a874c87fd42044f received MsgVoteResp from a874c87fd42044f at term 12\n","stream":"stderr","time":"2019-01-02T14:17:22.590371737Z"}
+{"log":"2019-01-02 14:17:22.590121 I | raft: a874c87fd42044f became leader at term 12\n","stream":"stderr","time":"2019-01-02T14:17:22.590375347Z"}
+{"log":"2019-01-02 14:17:22.590128 I | raft: raft.node: a874c87fd42044f elected leader a874c87fd42044f at term 12\n","stream":"stderr","time":"2019-01-02T14:17:22.590378892Z"}
+```
+6. Kubernetes API server runs as a pod in the cluster. Examine the logs.
+`vim /var/log/containers/kube-apiserver-ionshipman1c.mylabserver.com_kube-system_kube-apiserver-XXXX` 
+```
+{"log":"[restful] 2019/01/02 14:17:26 log.go:33: [restful/swagger] listing is available at https://172.31.44.139:6443/swaggerapi\n","stream":"stderr","time":"2019-01-02T14:17:26.79982418Z"}
+{"log":"[restful] 2019/01/02 14:17:26 log.go:33: [restful/swagger] https://172.31.44.139:6443/swaggerui/ is mapped to folder /swagger-ui/\n","stream":"stderr","time":"2019-01-02T14:17:26.79984574Z"}
+{"log":"[restful] 2019/01/02 14:17:28 log.go:33: [restful/swagger] listing is available at https://172.31.44.139:6443/swaggerapi\n","stream":"stderr","time":"2019-01-02T14:17:28.627682824Z"}
+{"log":"[restful] 2019/01/02 14:17:28 log.go:33: [restful/swagger] https://172.31.44.139:6443/swaggerui/ is mapped to folder /swagger-ui/\n","stream":"stderr","time":"2019-01-02T14:17:28.62770902Z"}
+{"log":"I0102 14:17:28.683641       1 plugins.go:158] Loaded 8 mutating admission controller(s) successfully in the following order: NamespaceLifecycle,LimitRanger,ServiceAccount,NodeRestriction,Priority,DefaultTolerationSeconds,DefaultStorageClass,MutatingAdmissionWebhook.\n","stream":"stderr","time":"2019-01-02T14:17:28.683914931Z"}
+{"log":"I0102 14:17:28.683661       1 plugins.go:161] Loaded 6 validating admission controller(s) successfully in the following order: LimitRanger,ServiceAccount,Priority,PersistentVolumeClaimResize,ValidatingAdmissionWebhook,ResourceQuota.\n","stream":"stderr","time":"2019-01-02T14:17:28.683934878Z"}
+{"log":"I0102 14:17:33.246623       1 secure_serving.go:116] Serving securely on [::]:6443\n","stream":"stderr","time":"2019-01-02T14:17:33.25175149Z"}
+{"log":"I0102 14:17:33.246681       1 autoregister_controller.go:136] Starting autoregister controller\n","stream":"stderr","time":"2019-01-02T14:17:33.251775853Z"}
+{"log":"I0102 14:17:33.246687       1 cache.go:32] Waiting for caches to sync for autoregister controller\n","stream":"stderr","time":"2019-01-02T14:17:33.25178029Z"}
+{"log":"I0102 14:17:33.249050       1 available_controller.go:278] Starting AvailableConditionController\n","stream":"stderr","time":"2019-01-02T14:17:33.25178386Z"}
+{"log":"I0102 14:17:33.249059       1 cache.go:32] Waiting for caches to sync for AvailableConditionController controller\n","stream":"stderr","time":"2019-01-02T14:17:33.251787227Z"}
+{"log":"I0102 14:17:33.249075       1 controller.go:84] Starting OpenAPI AggregationController\n","stream":"stderr","time":"2019-01-02T14:17:33.251790698Z"}
+{"log":"I0102 14:17:33.249514       1 crd_finalizer.go:242] Starting CRDFinalizer\n","stream":"stderr","time":"2019-01-02T14:17:33.251793884Z"}
+{"log":"I0102 14:17:33.250454       1 apiservice_controller.go:90] Starting APIServiceRegistrationController\n","stream":"stderr","time":"2019-01-02T14:17:33.251796945Z"}
+```
+or 
+
+`kubectl logs kube-apiserver-ionshipman1c.mylabserver.com -n kube-system`  
+```
+I0102 14:17:33.441412       1 log.go:172] http: TLS handshake error from 172.31.44.139:34580: EOF
+I0102 14:17:33.450331       1 log.go:172] http: TLS handshake error from 172.31.44.139:34584: EOF
+I0102 14:17:33.451734       1 log.go:172] http: TLS handshake error from 172.31.47.1:43182: EOF
+I0102 14:17:33.457912       1 log.go:172] http: TLS handshake error from 172.31.47.56:44862: EOF
+I0102 14:17:33.468958       1 log.go:172] http: TLS handshake error from 172.31.44.139:34622: EOF
+I0102 14:17:33.536832       1 cache.go:39] Caches are synced for autoregister controller
+I0102 14:17:33.537139       1 cache.go:39] Caches are synced for AvailableConditionController controller
+I0102 14:17:33.537455       1 cache.go:39] Caches are synced for APIServiceRegistrationController controller
+I0102 14:17:33.553396       1 controller_utils.go:1034] Caches are synced for crd-autoregister controller
+I0102 14:17:34.264633       1 storage_scheduling.go:100] all system priority classes are created successfully or already exist.
+I0102 14:17:51.397609       1 controller.go:608] quota admission added evaluator for: { endpoints}
+E0102 14:31:38.221252       1 watcher.go:208] watch chan error: etcdserver: mvcc: required revision has been compacted
+E0102 14:39:18.232895       1 watcher.go:208] watch chan error: etcdserver: mvcc: required revision has been compacted
+E0102 14:54:34.267870       1 watcher.go:208] watch chan error: etcdserver: mvcc: required revision has been compacted
+I0102 15:01:38.545934       1 trace.go:76] Trace[782359243]: "Get /api/v1/namespaces/default/pods/counter/log" (started: 2019-01-02 15:00:36.29566597 +0000 UTC m=+2597.809146312) (total time: 1m2.250217095s):
+Trace[782359243]: [1m2.250217095s] [1m2.192868446s] END
+E0102 15:02:46.298266       1 watcher.go:208] watch chan error: etcdserver: mvcc: required revision has been compacted
+```
 
 
 
