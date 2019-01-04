@@ -1209,6 +1209,148 @@ Worker Nodes
 
 ## Service Networking 
 
+Nodeport = Every single node in the cluster, assign a port that a load balancer can point to in order to deliver contents of the pod.  
+```
+cloud_user@ionshipman1c:~/kubernetes/manifests/linux-academy$ kubectl expose deployment webhead --type="NodePort" --port 80
+service/webhead exposed
+cloud_user@ionshipman1c:~/kubernetes/manifests/linux-academy$ kubectl get services
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP        49d
+webhead      NodePort    10.99.205.104   <none>        80:31861/TCP   8s
+cloud_user@ionshipman1c:~/kubernetes/manifests/linux-academy$ curl localhost:31861
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+Every node is running kube-proxy and redirecting requests to the particular port and redirecting it to the pod. 
+Cluster IP can redirect requests to a particulr IP address if there is a load balancer. 
+
+## Ingress 
+
+Ingress is an API object that manages external access to the service in a cluster, usually HTTP. 
+It can provide load balancing, SSL termination and name-based virtual hosting.  
+
+This could be a gateway managed by a cloud provider or a physical piece of hardware.  
+Our cluster network is a set of links, either logical or physical, that facilitate communication within a cluster according to the kubernetes networking model. Examples include overlays such as flannel  
+or SDNs such as OpenVSwitch. 
+
+Service is a kubernetes service that identifies a set of pod using label selectors. Services are assumed to have virtual IPs only routable within the cluster network. 
+
+Ingress is a collection of rules that allow inbound conenctions. Can be configured to give services externally-reachable URLs, load balance traffice, terminate SSL, offer name-based virtual hosting. 
+User request ingress by POSTing the ingress resource to the API server. An Ingress controller is responsible for fufilling the Ingress, usually by way of a load balancer, though it may also configure the edge router or additional  front hends to help handle to help handle the traffic in a HA manner.  
+
+Not available before Kubernetes 1.1 
+
+Need an ingress controller to satisfy ingress objects. Deploy it on the master, which must be annotated with the approprate class. 
+
+Ingress object contains all the specs needed to configure a load balancer, or proxy server and http rules. Host and path must match the content before the load balancer forwards to the backend
+
+You must manually configure the ingress controller. 
+
+Default backend can route things to a 404 page when the requests doesn't match any hosts and services.
+
+Securing an Ingress: 
+
+Specify secret 
+  - TLS private key 
+  - Certificate 
+
+Port 443 (Assumes TLS termination)
+
+Multiple hosts are multiplexed on the same port by hostnames specified through the SNI TLS extension. 
+The TLS secret must contain keys named tls.crt and tls.key that conain the certificate and private key to use for TLS 
+
+An ingress controller is bootstrapped with a load balancing policy that it applies to al all ingress objects. (e.g. load balancing algorithm, backend weight scheme, etc)
+Persistent sessions and dynamic weights not yet exposed
+Health checks are not exposed directly though the ingress, readiness probes allow for similar functionality. 
+
+`kubectl get ingress` to return ingress. 
+`kubectl edit ingress <ingress_name>` edit ingress using vim.
+`kubectl replace -f <file_name>` can update the running Kubernetes object. 
+
+Other ways to expose services without ingress 
+- Service. Type=LoadBalancer 
+- Service. Type=NodePort 
+- Use a port proxy 
+
+## Deploying a load balancer 
+```
+--- 
+apiVersion: v1 
+kind: Service 
+metadata:  
+  name: la-lb-service 
+spec: 
+  selector: 
+    app: la-lb 
+  ports: 
+  - protocol: TCP 
+    port: 80 
+    targetPort: 9376 
+  clusterIP: 10.0.171.223 
+  loadBalancerIP: 78.12.23.17 
+  type: loadBalancer
+``` 
+Need to know the type of the service and ingress rules for diverting outside traffic into the cluster. 
+
+## Configure and Use Cluster DNS 
+
+Excercise: 
+
+Run the `bit-of-nothing` deployment, run `busybox` pod and verify DNS resolution for the `bit-of-nothing` deployment. 
+1. `kubectl exec -it busybox -- nslookup bit-of-nothing` 
+```
+cloud_user@ionshipman1c:~/kubernetes/manifests/linux-academy$ kubectl exec -it busybox -- nslookup bit-of-nothing
+Server:    10.96.0.10
+Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
+
+nslookup: can't resolve 'bit-of-nothing'
+command terminated with exit code 1
+```
+
+2. Expose the bit of nothing deployment as a ClusterIP service.  
+`kubectl expose deployment bit-of-nothing --type=ClusterIP --port 80`
+
+3. Verify that `bit-of-nothing` is now being resolved to an IP address in the cluster 
+`kubectl get services`
+```
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+bit-of-nothing   ClusterIP   10.104.189.74   <none>        80/TCP         10s
+kubernetes       ClusterIP   10.96.0.1       <none>        443/TCP        49d
+webhead          NodePort    10.99.205.104   <none>        80:31861/TCP   132m
+```
+`kubectl exec -it busybox -- nslookup bit-of-nothing`
+```
+cloud_user@ionshipman1c:~/kubernetes/manifests/linux-academy$ kubectl exec -it busybox -- nslookup bit-of-nothing
+Server:    10.96.0.10
+Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      bit-of-nothing
+Address 1: 10.104.189.74 bit-of-nothing.default.svc.cluster.local
+```
 # Storage (7% of the Exam)
 # Security (12% of the Exam)
 # Troubleshooting (10% of the Exam)
