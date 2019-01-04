@@ -1132,11 +1132,86 @@ Trace[782359243]: [1m2.250217095s] [1m2.192868446s] END
 E0102 15:02:46.298266       1 watcher.go:208] watch chan error: etcdserver: mvcc: required revision has been compacted
 ```
 
+View logs from a dead or evicted pod. 
+`kubectl logs --previous <pod_name>`
 
+# Cluster Maintenance (11% of the Exam) 
 
+## Upgrading Kubernetes Components
+1. Update the control plane
+`apt-get upgrade kubeadm`
+Verify: `kubeadm version` 
+Plan Upgrade: `sudo kubeadm upgrade plan`
+Apply Upgrade: `kubeadm upgrade apply v1.13.1`  
 
+2. Verify CNI version (Flannel in this case)
+`kubectl get daemonsets -n kube-system kube-flannel-ds-amd64 -o yaml | grep image:` 
+```
+image: quay.io/coreos/flannel:v0.10.0-amd64
+image: quay.io/coreos/flannel:v0.10.0-amd64
+```
+3. Upgrade nodes 
+drain the nodes: `kubectl drain ionshipman2c.mylabserver.com --ignore-daemonsets`
+Upgrade kubelet: `apt update && apt upgrade kubelet`
+uncordon the node (allows scheduling): `kubectl uncordon ionshipman2c.mylabserver.com`
 
+## Upgrading Underlying Operating System(s)
 
+drain the node
+`kubeadm token list` 
+Join a new node to cluster: 
+`kubeadm token generate` 
+`kubeadmin token create <Token> --ttl 3h` ** ttl = Time To Live 
+Copy the join command and run on the new node. 
+
+## Excercise: Mainenance on NOde 
+`kubectl drain ionshipman3c.mylabserver.com --ignore-daemonsets` 
+`lots-of-nothing.yml`
+```
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lots-of-nothing
+  labels:
+    app: lots-of-nothing
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: lots-of-nothing
+  template:
+    metadata:
+      labels:
+        app: lots-of-nothing
+    spec:
+      containers:
+      - name: lots-of-nothing
+        image: k8s.gcr.io/pause:2.0
+```
+`kubectl uncordon ionshipman3c.mylabserver.com`
+# Networking (11% of the Exam) 
+## Node Networking Configuration 
+Inbound Node Port Requirements 
+
+Master Node(s): 
+- TCP 6443 - Kubernetes API Server
+- TCP 2379-2380 - etcd server client API
+- TCP 10250 - Kubelet API
+- TCP 10251 - kube-scheduler
+- TCP 10252 - kube-controller-manager
+- TCP 10255 - Read-only Kubelet API 
+
+Worker Nodes 
+- TCP 10250 - Kubelet API 
+- TCP 10255 - Read-only Kubelet API
+- TCP 30000-32767 - Node Port Services 
+
+## Service Networking 
+
+# Storage (7% of the Exam)
+# Security (12% of the Exam)
+# Troubleshooting (10% of the Exam)
 
 
 
