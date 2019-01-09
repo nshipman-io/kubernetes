@@ -1351,7 +1351,236 @@ Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
 Name:      bit-of-nothing
 Address 1: 10.104.189.74 bit-of-nothing.default.svc.cluster.local
 ```
-# Storage (7% of the Exam)
+## Container Network Interface (CNI) 
+
+All pods can communicate with all other pods. Each pod has its own IP address, No need for mapping container ports and Backward compatible with VMs: 
+  - Port allication 
+  - Naming 
+  - Service Discovery 
+  - Load balancing 
+  - Application Configuration 
+  - Migration 
+
+Dynamic Port Allocation Problems: 
+  - Every application must be configured to know which ports, etc. 
+  - API services must inject dynamic port numbers into containers 
+  - Services must be able to find one another or be configured to do so . 
+
+Kubernetes Way: 
+  - All containers can communicate with each other without NAT 
+  - All nodescan communciate with all containers and vice versa without NAT 
+  - The IP of a container is the same regardless of which container views it
+  - k8s applies IP addresses at the pod level 
+  - IP-per-pod -- containers in a pod share a single IP address, like processes in a VM
+
+CNI -- Must be implemented as an executable invoked by the container management system (kubernetes in this case) 
+plugin is responsible for 
+  - Inserting the network interface into the container network namespace 
+  - making necessary changes to the host 
+  - assign IP address to the interface 
+  - Set up routes consistent with IP address management 
+
+Kubelet: 
+  - Default network plugin 
+  - Default cluser-wide network 
+  - Probes for network plugins on startup 
+
+Flannel - Simple and easy Layer 3 network frabric. flanneld runs on each host (via a DaemonSet) 
+  - Allocates subnet least to each host 
+  - Stores network configuration, allocated subnets, other data 
+  - Packets forwarded using VxLANs 
+  - Does not handle network policies 
+
+Calico - Simple networking model, Policy driven network security. Can be run in policy enforement mode (Pair it with Flannel (Canal)) 
+
+# Storage (7% of the Exam) 
+
+## Persistent Volumes 
+
+Native Pod Storage is Ephermeral 
+
+What happens when a container crashes: 
+  - Kubelet restarts it (possibly on another node) 
+  - File system is re-created from image 
+  - Ephemeral files are gone 
+
+Docker Volumes 
+  - Directory to disk 
+  - Possibly in another container
+  - New Volume Drivers
+
+Kubernetes Volumes 
+  - Same lifetime as its pod 
+  - Data preserved across container restarts 
+  - Pod goes away -> Volume goes away 
+  - Directory with data 
+  - Accessible to containers in a pod 
+  - Implementation details determined by volume types  
+
+Using Volumes 
+  - Pod spec indicates which volumes is provided for the pod (spec,volumes)
+  - Pod spec indicates where to mount these volumes in continers (spec,containers,volumeMounts)
+  - Seen from the containers perpective as the file system 
+  - Volumes cannot mount to other volumes 
+  - no hard links to other volumes 
+  - Each pod must specify where each pod must specify where each volume is mounted 
+
+Empty Dir for caching 
+
+`aws ec2 create-volume --availability-zone=us-east-1a --size=10 --volume-type=gp2`
+
+```
+apiVersion: v1 
+Kind: Pod 
+metadata: 
+  name: test-pd 
+specs: 
+  containers:  
+  - image: k8s.gcr.io/test-webserver 
+    name: test-container 
+    volumeMounts: 
+    - mountPath: /test-pd 
+    name: test-volume 
+  volumes: 
+  - name: test-volume
+  # EBS volume must be created in AWS First
+    awsElasticBlockStore: 
+      volumeID: <volume-id>
+      fsType: ext4
+``` 
+
+## Volumes and Their Access Modes 
+
+ PersistentVolume -- API for users that abstracts implementation details of storage 
+  - Provisioned storage in the cluster 
+  - Cluster resource 
+  - Volume plugins have independent lifecycle from pods 
+  - Volumes share the lifecycle of the pod; PersistentVolumes do not 
+  - API object (YAML) details the implementation 
+
+ Persistent VolumeClaim -- Method for users to claim durable storae regardless of implementation details 
+  - Request for storage 
+  - Pods consume node resources; PVCs consume PV resources. 
+  - Pods can request specific CPU and memory. PVCs can request specific size and access modes.
+
+PVs and PVCs 
+- Users and applications do not share identical requirements 
+- Administrators should offer a variety of PVs without users worrying about the implementation details. (storageclasses)
+- PVs are cluster resources. PVCs are requests for the cluster resource 
+- PVCs also act as a "claim check" on a resource. 
+- PVs and PVCs have a set lifecycle 
+  - Provision
+  - Bind 
+  - Reclaim 
+
+Provisioning 
+
+- Static 
+  - Creates PVs 
+  - In the k8S API and available for consumption 
+
+- Dynamic 
+  - Used when none of the static PVs match the PVC 
+  - Based on StorageClasses 
+  - PVC must request a created and configured storage class 
+  - Claims requesting nameless class disable dynamic provisioning 
+
+To enable dynamic storage provisoning, DefaultStorageClass admission controller of the API server must be enabled. 
+
+Binding 
+
+- USer creates PVC 
+- MAster watches for new PVCs and matches them to PVs 
+- Master binds PVC to PV 
+- Volume may be more than the request 
+- Bind are exclusive 
+- PVC -> PV mapping is always 1:1 
+- Claims not matched will remained unbound 
+- Pods treat PVCs as volumes 
+- Cluster checks claim, mounts appropriate volume to pod
+
+Persistent Volume Claim Protection 
+
+- Ensures PVC actively in use do not get removed from the system 
+- Ensures PVCs actively in use do not get removed from the system
+- PVC considered active when: 
+  - The pod status is pending and the pod is assigned to a node
+  - The pod status is running 
+- If a user deletes a PVC in use, removal is postponed until PVC is not use by any pod 
+
+```
+status: Terminating 
+Finalizers: [kubernetes.io/pvc-protection]
+```
+
+Reclaiming 
+
+- User can delete PVC objects 
+- Reclaim policy for a PV tells the cluster what to do with the volume 
+- Policies 
+  - Retain 
+  - Recycle 
+  - Delete 
+- Policies allow for manual reclamation of a resource 
+  - PVC deleted 
+  - PV still exists; volume is released  
+  - Not yet available because the data is still present 
+  - Admin can manually reclaim the volume 
+
+- Administators can configure custom recycler pod template 
+- Must contain a volumes specification 
+- Volume plugs that support Delete reclaim policy 
+  - Removes the Persistent/Volume object from K8s 
+  - Associated storage assets in the infrastructure 
+  - Dynaically provisioned volumes inheritt reclaim policy of their StorageClass 
+- Administrator should configure StorageClass accourding to expectations  
+
+Capcacity 
+
+- PVs have a speciic storage capacity
+- Set using "capacity" attribute 
+- Storage size is the only resource that can be set or requested 
+- future attribute plans: 
+  - IOPS 
+  - Throughput 
+  - ??? 
+
+- Can specify VolumeMode 
+  - Raw Block Devices -- "Block" 
+  - File systems -- "Filesystem" (default) 
+
+- Must be supported by storage resource provider 
+- ReadWriteOnce -- Can be mounted as read/write by one nod eonly (RWO)
+- ReadOnlyMany -- Can be mounted read-only by many nodes (ROX) 
+- ReadWriteMany -- Can be mounted read/write by many nodes (RWX) 
+
+A volume can onlyu be mounted using one access mode at a time, regardless of the modes that are supported. 
+
+## Applications and Persistent Storage 
+```
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: lapv
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Recycle
+  nfs:
+    path: /var/nfs/general
+    server: 172.31.39.246
+    readOnly: false
+```
+
+`kubectl get pv`
+`kubectl get pvc`
+
+Persistent Volume is provisioned by the administrator. 
+Persistent Volume Claim is requested by the application or the user. 
 # Security (12% of the Exam)
 # Troubleshooting (10% of the Exam)
 
